@@ -9,6 +9,7 @@ DB schema:
     Two main entities:
         subscription(email, repo id, tokens, confirmed), 
         repo(name, last_checked)
+    subscriptions table has a composite UNIQUE that ensures the same pair of email and repo cannot be added 
     So that the last changes are not updated in all the users separately, but in one row
     + indexes for tokens and email
 

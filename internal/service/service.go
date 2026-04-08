@@ -2,7 +2,8 @@ package service
 
 import (
 	"GithubReleaseNotificationAPI/internal/domain"
-	"GithubReleaseNotificationAPI/internal/store"
+	"GithubReleaseNotificationAPI/internal/store/repository"
+	"GithubReleaseNotificationAPI/internal/store/subscription"
 	"context"
 )
 
@@ -14,13 +15,13 @@ type SubscriptionService interface {
 }
 
 type subscriptionService struct {
-	subscriptionRepository store.SubscriptionRepository
-	repositoryRepository   store.RepositoryRepository
+	subscriptionRepository subscription.Repository
+	repositoryRepository   repository.Repository
 }
 
 func NewSubscriptionService(
-	subscriptionRepository store.SubscriptionRepository,
-	repositoryRepository store.RepositoryRepository,
+	subscriptionRepository subscription.Repository,
+	repositoryRepository repository.Repository,
 ) SubscriptionService {
 	return &subscriptionService{
 		subscriptionRepository: subscriptionRepository,
@@ -29,6 +30,18 @@ func NewSubscriptionService(
 }
 
 func (s *subscriptionService) Subscribe(ctx context.Context, email string, repo string) error {
+	if err := validateEmailFormat(email); err != nil {
+		return err
+	}
+
+	if err := validateRepoFormat(repo); err != nil {
+		return err
+	}
+
+	// TODO GitHub repo check
+	// TODO no duplicate subscription
+
+	// TODO sent email confirmation
 	return nil
 }
 

@@ -6,7 +6,8 @@ import (
 	httpHandler "GithubReleaseNotificationAPI/internal/http/handler"
 	httpRouter "GithubReleaseNotificationAPI/internal/http/router"
 	"GithubReleaseNotificationAPI/internal/service"
-	"GithubReleaseNotificationAPI/internal/store"
+	"GithubReleaseNotificationAPI/internal/store/repository"
+	"GithubReleaseNotificationAPI/internal/store/subscription"
 	"context"
 	"errors"
 	"log"
@@ -36,8 +37,8 @@ func main() {
 	}
 	defer dbPool.Close()
 
-	subscriptionRepository := store.NewSubscriptionRepository(dbPool)
-	repositoryRepository := store.NewRepositoryRepository(dbPool)
+	subscriptionRepository := subscription.NewSubscriptionRepository(dbPool)
+	repositoryRepository := repository.NewRepositoryRepository(dbPool)
 
 	subscriptionService := service.NewSubscriptionService(
 		subscriptionRepository,

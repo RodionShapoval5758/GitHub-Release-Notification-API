@@ -1,4 +1,4 @@
-package store
+package subscription
 
 import (
 	"GithubReleaseNotificationAPI/internal/domain"
@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type SubscriptionRepository interface {
+type Repository interface {
 	Create(ctx context.Context, subscription domain.Subscription) error
 	FindByEmailAndRepositoryID(ctx context.Context, email string, repositoryID int64) (*domain.Subscription, error)
 	FindByConfirmToken(ctx context.Context, token string) (*domain.Subscription, error)
