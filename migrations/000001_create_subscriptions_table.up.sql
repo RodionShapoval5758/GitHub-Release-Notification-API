@@ -1,6 +1,6 @@
 -- Up migration
 CREATE TABLE IF NOT EXISTS repositories (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) UNIQUE NOT NULL, -- format: owner/repo
     last_seen_tag VARCHAR(255),
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -8,9 +8,9 @@ CREATE TABLE IF NOT EXISTS repositories (
 );
 
 CREATE TABLE IF NOT EXISTS subscriptions (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     email VARCHAR(255) NOT NULL,
-    repository_id INTEGER NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
+    repository_id BIGINT NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
     confirmed BOOLEAN NOT NULL DEFAULT FALSE,
     confirmation_token VARCHAR(255) UNIQUE,
     unsubscribe_token VARCHAR(255) UNIQUE,
