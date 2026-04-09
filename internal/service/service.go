@@ -2,9 +2,12 @@ package service
 
 import (
 	"GithubReleaseNotificationAPI/internal/domain"
+	"GithubReleaseNotificationAPI/internal/store"
 	"GithubReleaseNotificationAPI/internal/store/repository"
 	"GithubReleaseNotificationAPI/internal/store/subscription"
 	"context"
+	"errors"
+	"fmt"
 )
 
 type SubscriptionService interface {
@@ -39,8 +42,28 @@ func (s *subscriptionService) Subscribe(ctx context.Context, email string, repo 
 	}
 
 	// TODO GitHub repo check
-	// TODO no duplicate subscription
 
+	// Manual race condition handling
+	repoDomain, err := s.repositoryRepository.FindByFullName(ctx, repo)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			repoDomain, err = s.repositoryRepository.Create(ctx, repo)
+			if err != nil {
+				if errors.Is(err, store.ErrAlreadyExists) {
+					repoDomain, err = s.repositoryRepository.FindByFullName(ctx, repo)
+					if err != nil {
+						return fmt.Errorf("find repository %s after create conflict: %w", repo, err)
+					}
+				} else {
+					return fmt.Errorf("create repository %s: %w", repo, err)
+				}
+			}
+		} else {
+			return fmt.Errorf("find repository %s: %w", repo, err)
+		}
+	}
+
+	// TODO no duplicate subscription
 	// TODO sent email confirmation
 	return nil
 }

@@ -19,3 +19,7 @@ Errors && logging:
     Logging:
         ERRORS: log fatal with context when something failed and needs attention
         INFO: when some process started or for providing context, so that I know what has happened
+
+Instead of creating GerOrCreate method for repository that is race-safe
+I separated methods Create and Find and implemented manual race condition handling
+so that everything is explicit and content

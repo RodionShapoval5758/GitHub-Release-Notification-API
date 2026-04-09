@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     confirmation_token VARCHAR(255) UNIQUE,
     unsubscribe_token VARCHAR(255) UNIQUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    confirmed_at TIMESTAMPTZ,
     UNIQUE (email, repository_id)
 );
 
