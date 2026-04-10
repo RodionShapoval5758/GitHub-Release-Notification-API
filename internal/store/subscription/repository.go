@@ -44,9 +44,17 @@ func (r *PostgresSubscriptionRepository) Create(ctx context.Context, subscriptio
 	)
 	if err != nil {
 		var pgErr *pgconn.PgError
-		//TODO differentiate unique vialoation with the constraint name
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
-			return store.ErrAlreadyExists
+			switch pgErr.ConstraintName {
+			case "subscriptions_email_repository_id_key":
+				return store.ErrAlreadyExists
+			case "subscriptions_confirmation_token_key":
+				return fmt.Errorf("confirmation token: %w", store.ErrTokensAlreadyExists)
+			case "subscriptions_unsubscribe_token_key":
+				return fmt.Errorf("unsubscribe token : %w", store.ErrTokensAlreadyExists)
+			default:
+				return fmt.Errorf("unexpected unique violation on subscriptions: %w", err)
+			}
 		}
 
 		return fmt.Errorf(

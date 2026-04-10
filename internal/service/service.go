@@ -32,6 +32,8 @@ func NewSubscriptionService(
 	}
 }
 
+const TokenLength = 32
+
 func (s *subscriptionService) Subscribe(ctx context.Context, email string, repo string) error {
 	if err := validateEmailFormat(email); err != nil {
 		return err
@@ -63,7 +65,35 @@ func (s *subscriptionService) Subscribe(ctx context.Context, email string, repo 
 		}
 	}
 
-	// TODO no duplicate subscription
+	confirmToken, err := GenerateToken(TokenLength)
+	if err != nil {
+		return fmt.Errorf("create token: %w", err)
+	}
+
+	unsubscribeToken, err := GenerateToken(TokenLength)
+	if err != nil {
+		return fmt.Errorf("create token: %w", err)
+	}
+
+	subscriptionInput := domain.Subscription{
+		Email:            email,
+		RepositoryID:     repoDomain.ID,
+		ConfirmToken:     confirmToken,
+		UnsubscribeToken: unsubscribeToken,
+	}
+
+	if err := s.subscriptionRepository.Create(ctx, subscriptionInput); err != nil {
+		switch {
+		case errors.Is(err, store.ErrAlreadyExists):
+			return ErrSubscriptionAlreadyExists
+		case errors.Is(err, store.ErrTokensAlreadyExists):
+			// TODO regenerate tokens
+		default:
+			return fmt.Errorf("failed to create subscription: %w", err)
+		}
+		return fmt.Errorf("create subscription: %w", err)
+	}
+
 	// TODO sent email confirmation
 	return nil
 }
