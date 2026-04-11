@@ -9,13 +9,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 type SubscriptionService interface {
 	Subscribe(ctx context.Context, email string, repo string) error
 	Confirm(ctx context.Context, token string) error
 	Unsubscribe(ctx context.Context, token string) error
-	ListByEmail(ctx context.Context, email string) ([]domain.Subscription, error)
+	ListByEmail(ctx context.Context, email string) ([]subscription.Details, error)
 }
 
 type githubClient interface {
@@ -41,12 +42,15 @@ func NewSubscriptionService(
 }
 
 const TokenLength = 32
+const maxTokenGenerationAttempts = 5
 
 func (s *subscriptionService) Subscribe(ctx context.Context, email string, repo string) error {
+	email = strings.TrimSpace(email)
 	if err := validateEmailFormat(email); err != nil {
 		return err
 	}
 
+	repo = strings.TrimSpace(repo)
 	if err := validateRepoFormat(repo); err != nil {
 		return err
 	}
@@ -84,30 +88,12 @@ func (s *subscriptionService) Subscribe(ctx context.Context, email string, repo 
 		}
 	}
 
-	confirmToken, err := GenerateToken(TokenLength)
-	if err != nil {
-		return fmt.Errorf("create token: %w", err)
-	}
-
-	unsubscribeToken, err := GenerateToken(TokenLength)
-	if err != nil {
-		return fmt.Errorf("create token: %w", err)
-	}
-
-	subscriptionInput := domain.Subscription{
-		Email:            email,
-		RepositoryID:     repoDomain.ID,
-		ConfirmToken:     confirmToken,
-		UnsubscribeToken: unsubscribeToken,
-	}
-
-	if err := s.subscriptionRepository.Create(ctx, subscriptionInput); err != nil {
+	if err := s.createSubscriptionWithGeneratedTokens(ctx, email, repoDomain.ID); err != nil {
 		switch {
 		case errors.Is(err, store.ErrAlreadyExists):
 			return ErrSubscriptionAlreadyExists
 		case errors.Is(err, store.ErrTokensAlreadyExists):
-			// TODO regenerate tokens
-			return fmt.Errorf("create subscription tokens conflict: %w", err)
+			return fmt.Errorf("create subscription tokens conflict after retries: %w", err)
 		default:
 			return fmt.Errorf("failed to create subscription: %w", err)
 		}
@@ -118,17 +104,79 @@ func (s *subscriptionService) Subscribe(ctx context.Context, email string, repo 
 }
 
 func (s *subscriptionService) Confirm(ctx context.Context, token string) error {
-	err := s.subscriptionRepository.Confirm(ctx, token)
-	if err != nil {
-		return err
+	if err := s.subscriptionRepository.Confirm(ctx, token); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return fmt.Errorf("confirm token not found: %w", ErrTokenNotFound)
+		}
+
+		return fmt.Errorf("confirm subscription with token %s: %w", token, err)
 	}
+
 	return nil
 }
 
 func (s *subscriptionService) Unsubscribe(ctx context.Context, token string) error {
+	if err := s.subscriptionRepository.DeleteByUnsubscribeToken(ctx, token); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return fmt.Errorf("unsubscribe token not found: %w", ErrTokenNotFound)
+		}
+
+		return fmt.Errorf("delete subscription with token %s: %w", token, err)
+	}
+
 	return nil
 }
 
-func (s *subscriptionService) ListByEmail(ctx context.Context, email string) ([]domain.Subscription, error) {
-	return nil, nil
+func (s *subscriptionService) ListByEmail(ctx context.Context, email string) ([]subscription.Details, error) {
+	email = strings.TrimSpace(email)
+	err := validateEmailFormat(email)
+	if err != nil {
+		return nil, err
+	}
+
+	subscriptions, err := s.subscriptionRepository.ListSubscriptionDetailsByEmail(ctx, email)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list subscriptions with email %s: %w", email, err)
+	}
+
+	return subscriptions, nil
+}
+
+func (s *subscriptionService) createSubscriptionWithGeneratedTokens(ctx context.Context, email string, repositoryID int64) error {
+	for range maxTokenGenerationAttempts {
+		confirmToken, unsubscribeToken, err := GenerateTokens()
+		if err != nil {
+			return err
+		}
+
+		subscriptionInput := domain.Subscription{
+			Email:            email,
+			RepositoryID:     repositoryID,
+			ConfirmToken:     confirmToken,
+			UnsubscribeToken: unsubscribeToken,
+		}
+
+		err = s.subscriptionRepository.Create(ctx, subscriptionInput)
+		if errors.Is(err, store.ErrTokensAlreadyExists) {
+			continue
+		}
+
+		return err
+	}
+
+	return store.ErrTokensAlreadyExists
+}
+
+func GenerateTokens() (string, string, error) {
+	token1, err := GenerateToken(TokenLength)
+	if err != nil {
+		return "", "", fmt.Errorf("create token: %w", err)
+	}
+
+	token2, err := GenerateToken(TokenLength)
+	if err != nil {
+		return "", "", fmt.Errorf("create token: %w", err)
+	}
+
+	return token1, token2, nil
 }

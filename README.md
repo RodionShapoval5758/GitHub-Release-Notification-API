@@ -23,3 +23,9 @@ Errors && logging:
 Instead of creating GerOrCreate method for repository that is race-safe
 I separated methods Create and Find and implemented manual race condition handling
 so that everything is explicit and content
+
+In case of duplicate tokens the program tries to regenerate it 5 times. 
+There is a ridiculously small possibility of getting 
+duplicate tokens with 32 token length, so I neglect it
+
+Swagger docs states that /api/subscribe consumes both json and form data, so I made a fallback for both

@@ -1,6 +1,6 @@
 package models
 
 type SubscriptionRequest struct {
-	Email string
-	Repo  string
+	Email string `json:"email"`
+	Repo  string `json:"repo"`
 }

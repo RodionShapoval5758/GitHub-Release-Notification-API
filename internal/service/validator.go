@@ -6,7 +6,6 @@ import (
 )
 
 func validateEmailFormat(email string) error {
-	email = strings.TrimSpace(email)
 	_, err := mail.ParseAddress(email)
 	if err != nil {
 		return ErrInvalidEmailFormat
@@ -16,7 +15,6 @@ func validateEmailFormat(email string) error {
 }
 
 func validateRepoFormat(repo string) error {
-	repo = strings.TrimSpace(repo)
 
 	parts := strings.Split(repo, "/")
 

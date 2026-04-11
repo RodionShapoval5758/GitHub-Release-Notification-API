@@ -5,10 +5,14 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 func New(handler *handler.Handler) http.Handler {
 	router := chi.NewRouter()
+
+	router.Use(middleware.Logger)
+	router.Use(middleware.Recoverer)
 
 	router.Post("/api/subscribe", handler.Subscribe)
 	router.Get("/api/confirm/{token}", handler.Confirm)

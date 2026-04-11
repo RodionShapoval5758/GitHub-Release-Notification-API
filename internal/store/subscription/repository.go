@@ -21,6 +21,7 @@ type Repository interface {
 	Confirm(ctx context.Context, token string) error
 	DeleteByUnsubscribeToken(ctx context.Context, token string) error
 	ListConfirmedByEmail(ctx context.Context, email string) ([]domain.Subscription, error)
+	ListSubscriptionDetailsByEmail(ctx context.Context, email string) ([]Details, error)
 }
 
 type PostgresSubscriptionRepository struct {
@@ -190,6 +191,35 @@ func (r *PostgresSubscriptionRepository) ListConfirmedByEmail(ctx context.Contex
 	}
 
 	return subscriptions, nil
+}
+
+func (r *PostgresSubscriptionRepository) ListSubscriptionDetailsByEmail(ctx context.Context, email string) ([]Details, error) {
+	rows, err := r.pool.Query(ctx, listSubscriptionDetailsByEmailQuery, email)
+	if err != nil {
+		return nil, fmt.Errorf("query subscriptions details by email %s: %w", email, err)
+	}
+	defer rows.Close()
+
+	var details []Details
+	for rows.Next() {
+		var detail Details
+		err := rows.Scan(
+			&detail.Email,
+			&detail.Repo,
+			&detail.Confirmed,
+			&detail.LastSeenTag,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan subscription row: %w", err)
+		}
+		details = append(details, detail)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate subscription rows: %w", err)
+	}
+
+	return details, nil
 }
 
 func scanSubscription(row pgx.Row) (*domain.Subscription, error) {

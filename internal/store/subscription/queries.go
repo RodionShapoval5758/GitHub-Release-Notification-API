@@ -44,3 +44,9 @@ const listConfirmedSubscriptionsByEmailQuery = `
 	FROM subscriptions
 	WHERE email = $1 AND confirmed = TRUE
 `
+const listSubscriptionDetailsByEmailQuery = `
+	SELECT subscriptions.email, repositories.name, subscriptions.confirmed, repositories.last_seen_tag
+	FROM subscriptions
+	JOIN repositories ON subscriptions.repository_id = repositories.id
+	WHERE subscriptions.email = $1 AND subscriptions.confirmed = TRUE
+`

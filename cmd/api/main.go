@@ -11,7 +11,7 @@ import (
 	"GithubReleaseNotificationAPI/internal/store/subscription"
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -20,13 +20,18 @@ import (
 )
 
 func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load env variables: %v", err)
+		slog.Error("Failed to load env variables", "error", err)
+		os.Exit(1)
 	}
 
 	if err := db.RunMigrations(cfg.DatabaseURL); err != nil {
-		log.Fatalf("Failed to run migrations: %v", err)
+		slog.Error("Failed to run migrations", "error", err)
+		os.Exit(1)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -34,7 +39,8 @@ func main() {
 
 	dbPool, err := db.NewPool(ctx, cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("Pool creation error: %v", err)
+		slog.Error("Pool creation error", "error", err)
+		os.Exit(1)
 	}
 	defer dbPool.Close()
 
@@ -57,11 +63,12 @@ func main() {
 		Handler: router,
 	}
 
-	log.Printf("starting HTTP server on :%s", cfg.Port)
+	slog.Info("starting HTTP server", "port", cfg.Port)
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("http server failed: %v", err)
+			slog.Error("http server failed", "error", err)
+			os.Exit(1)
 		}
 	}()
 
@@ -69,14 +76,15 @@ func main() {
 	defer stop()
 
 	<-shutdownSignalCtx.Done()
-	log.Println("shutdown signal received")
+	slog.Info("shutdown signal received")
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("graceful shutdown failed: %v", err)
+		slog.Error("graceful shutdown failed", "error", err)
+		os.Exit(1)
 	}
 
-	log.Println("http server stopped")
+	slog.Info("http server stopped")
 }
