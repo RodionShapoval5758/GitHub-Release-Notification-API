@@ -3,6 +3,7 @@ package main
 import (
 	"GithubReleaseNotificationAPI/internal/config"
 	"GithubReleaseNotificationAPI/internal/db"
+	"GithubReleaseNotificationAPI/internal/github"
 	httpHandler "GithubReleaseNotificationAPI/internal/http/handler"
 	httpRouter "GithubReleaseNotificationAPI/internal/http/router"
 	"GithubReleaseNotificationAPI/internal/service"
@@ -40,9 +41,12 @@ func main() {
 	subscriptionRepository := subscription.NewSubscriptionRepository(dbPool)
 	repositoryRepository := repository.NewRepositoryRepository(dbPool)
 
+	githubClient := github.NewGithubClient(http.DefaultClient, &cfg.GithubToken)
+
 	subscriptionService := service.NewSubscriptionService(
 		subscriptionRepository,
 		repositoryRepository,
+		githubClient,
 	)
 
 	handler := httpHandler.New(subscriptionService)

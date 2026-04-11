@@ -170,7 +170,26 @@ func (r *PostgresSubscriptionRepository) DeleteByUnsubscribeToken(ctx context.Co
 }
 
 func (r *PostgresSubscriptionRepository) ListConfirmedByEmail(ctx context.Context, email string) ([]domain.Subscription, error) {
-	return nil, nil
+	rows, err := r.pool.Query(ctx, listConfirmedSubscriptionsByEmailQuery, email)
+	if err != nil {
+		return nil, fmt.Errorf("query confirmed subscriptions by email %s: %w", email, err)
+	}
+	defer rows.Close()
+
+	var subscriptions []domain.Subscription
+	for rows.Next() {
+		sub, err := scanSubscription(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan subscription row: %w", err)
+		}
+		subscriptions = append(subscriptions, *sub)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate subscription rows: %w", err)
+	}
+
+	return subscriptions, nil
 }
 
 func scanSubscription(row pgx.Row) (*domain.Subscription, error) {

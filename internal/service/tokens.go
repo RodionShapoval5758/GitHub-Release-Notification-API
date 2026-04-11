@@ -6,8 +6,8 @@ import (
 	"fmt"
 )
 
-func GenerateToken(lengths int) (string, error) {
-	bytes := make([]byte, lengths)
+func GenerateToken(length int) (string, error) {
+	bytes := make([]byte, length)
 	_, err := rand.Read(bytes)
 	if err != nil {
 		return "", fmt.Errorf("generating random bytes: %w", err)

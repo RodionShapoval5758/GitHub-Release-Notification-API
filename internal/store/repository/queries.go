@@ -17,3 +17,8 @@ const updateLastSeenTagByIDQuery = `
 		SET last_seen_tag = $2, updated_at = now()
 	WHERE id = $1
 `
+
+const listTrackedReposQuery = `
+	SELECT id, name, last_seen_tag, created_at, updated_at
+	FROM repositories
+`

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"GithubReleaseNotificationAPI/internal/http/models"
+	"GithubReleaseNotificationAPI/internal/http/util"
 	"GithubReleaseNotificationAPI/internal/service"
 	"net/http"
 
@@ -39,17 +40,47 @@ func (h *Handler) Subscribe(w http.ResponseWriter, r *http.Request) {
 		handleError(err)
 		return
 	}
+
+	util.WriteJSONResponse(w, http.StatusOK, nil)
 }
 
 func (h *Handler) Confirm(w http.ResponseWriter, r *http.Request) {
 	token := chi.URLParam(r, "token")
-	_ = token
+
+	if token == "" || len(token) < 8 {
+		http.Error(w, "invalid token", http.StatusBadRequest)
+		return
+	}
+
+	err := h.subscriptionService.Confirm(r.Context(), token)
+	if err != nil {
+		handleError(err)
+		return
+	}
+
+	util.WriteJSONResponse(w, http.StatusOK, nil)
 }
 
 func (h *Handler) Unsubscribe(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
+	token := chi.URLParam(r, "token")
+
+	if token == "" || len(token) < 8 {
+		http.Error(w, "invalid token", http.StatusBadRequest)
+		return
+	}
+
+	err := h.subscriptionService.Unsubscribe(r.Context(), token)
+	if err != nil {
+		handleError(err)
+		return
+	}
+	util.WriteJSONResponse(w, http.StatusOK, nil)
 }
 
 func (h *Handler) ListSubscriptions(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
+	email := r.URL.Query().Get("email")
+
+	if email == "" {
+		http.Error(w, "empty email", http.StatusBadRequest)
+	}
 }

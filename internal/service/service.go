@@ -2,6 +2,7 @@ package service
 
 import (
 	"GithubReleaseNotificationAPI/internal/domain"
+	gh "GithubReleaseNotificationAPI/internal/github"
 	"GithubReleaseNotificationAPI/internal/store"
 	"GithubReleaseNotificationAPI/internal/store/repository"
 	"GithubReleaseNotificationAPI/internal/store/subscription"
@@ -17,18 +18,25 @@ type SubscriptionService interface {
 	ListByEmail(ctx context.Context, email string) ([]domain.Subscription, error)
 }
 
+type githubClient interface {
+	CheckRepo(ctx context.Context, fullName string) error
+}
+
 type subscriptionService struct {
 	subscriptionRepository subscription.Repository
 	repositoryRepository   repository.Repository
+	githubClient           githubClient
 }
 
 func NewSubscriptionService(
 	subscriptionRepository subscription.Repository,
 	repositoryRepository repository.Repository,
+	githubClient githubClient,
 ) SubscriptionService {
 	return &subscriptionService{
 		subscriptionRepository: subscriptionRepository,
 		repositoryRepository:   repositoryRepository,
+		githubClient:           githubClient,
 	}
 }
 
@@ -43,7 +51,18 @@ func (s *subscriptionService) Subscribe(ctx context.Context, email string, repo 
 		return err
 	}
 
-	// TODO GitHub repo check
+	if err := s.githubClient.CheckRepo(ctx, repo); err != nil {
+		switch {
+		case errors.Is(err, gh.ErrNotFound):
+			return ErrRepoNotFound
+		case errors.Is(err, gh.ErrRateLimited):
+			return ErrTooMuchRequests
+		case errors.Is(err, gh.ErrUnexpectedResponse):
+			return fmt.Errorf("github repo check failed: %w", err)
+		default:
+			return fmt.Errorf("github repo check request failed: %w", err)
+		}
+	}
 
 	// Manual race condition handling
 	repoDomain, err := s.repositoryRepository.FindByFullName(ctx, repo)
@@ -88,10 +107,10 @@ func (s *subscriptionService) Subscribe(ctx context.Context, email string, repo 
 			return ErrSubscriptionAlreadyExists
 		case errors.Is(err, store.ErrTokensAlreadyExists):
 			// TODO regenerate tokens
+			return fmt.Errorf("create subscription tokens conflict: %w", err)
 		default:
 			return fmt.Errorf("failed to create subscription: %w", err)
 		}
-		return fmt.Errorf("create subscription: %w", err)
 	}
 
 	// TODO sent email confirmation
@@ -99,6 +118,10 @@ func (s *subscriptionService) Subscribe(ctx context.Context, email string, repo 
 }
 
 func (s *subscriptionService) Confirm(ctx context.Context, token string) error {
+	err := s.subscriptionRepository.Confirm(ctx, token)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
