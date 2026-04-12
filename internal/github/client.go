@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -51,7 +52,11 @@ func (s *Service) CheckRepo(ctx context.Context, fullName string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			slog.Warn("failed to close github repository response body", "repository", fullName, "error", err)
+		}
+	}()
 
 	if err := determineRepsonse(resp); err != nil {
 		return err
@@ -68,7 +73,11 @@ func (s *Service) GetLatestTag(ctx context.Context, fullName string) (*Release, 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			slog.Warn("failed to close github latest release response body", "repository", fullName, "error", err)
+		}
+	}()
 
 	if err := determineRepsonse(resp); err != nil {
 		return nil, err

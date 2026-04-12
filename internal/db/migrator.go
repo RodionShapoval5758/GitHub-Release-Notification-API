@@ -3,7 +3,7 @@ package db
 import (
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -15,12 +15,20 @@ func RunMigrations(dsn string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create migrate instance: %w", err)
 	}
-	defer mgrt.Close()
+	defer func(mgrt *migrate.Migrate) {
+		sourceErr, databaseErr := mgrt.Close()
+		if sourceErr != nil {
+			slog.Warn("failed to close migration source", "error", sourceErr)
+		}
+		if databaseErr != nil {
+			slog.Warn("failed to close migration database", "error", databaseErr)
+		}
+	}(mgrt)
 
 	if err := mgrt.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
-	log.Println("Migrations have been ran successfully")
+	slog.Info("migrations ran successfully")
 	return nil
 }
