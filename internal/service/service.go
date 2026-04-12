@@ -116,12 +116,39 @@ func (s *subscriptionService) Confirm(ctx context.Context, token string) error {
 }
 
 func (s *subscriptionService) Unsubscribe(ctx context.Context, token string) error {
+	subscriptionDomain, err := s.subscriptionRepository.FindByUnsubscribeToken(ctx, token)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return fmt.Errorf("unsubscribe token not found: %w", ErrTokenNotFound)
+		}
+
+		return fmt.Errorf("find subscription with unsubscribe token %s: %w", token, err)
+	}
+
 	if err := s.subscriptionRepository.DeleteByUnsubscribeToken(ctx, token); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return fmt.Errorf("unsubscribe token not found: %w", ErrTokenNotFound)
 		}
 
 		return fmt.Errorf("delete subscription with token %s: %w", token, err)
+	}
+
+	hasAnySubscriptions, err := s.subscriptionRepository.HasAnyByRepositoryID(ctx, subscriptionDomain.RepositoryID)
+	if err != nil {
+		return fmt.Errorf("check remaining subscriptions for repository_id %d: %w", subscriptionDomain.RepositoryID, err)
+	}
+
+	if hasAnySubscriptions {
+		return nil
+	}
+
+	err = s.repositoryRepository.DeleteByID(ctx, subscriptionDomain.RepositoryID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return fmt.Errorf("repository %d disappeared during unsubscribe cleanup: %w", subscriptionDomain.RepositoryID, err)
+		}
+
+		return fmt.Errorf("delete orphaned repository %d: %w", subscriptionDomain.RepositoryID, err)
 	}
 
 	return nil

@@ -17,6 +17,7 @@ type Repository interface {
 	Create(ctx context.Context, repositoryName string) (*domain.Repository, error)
 	FindByFullName(ctx context.Context, fullName string) (*domain.Repository, error)
 	UpdateLastSeenTag(ctx context.Context, repositoryID int64, tag string) error
+	DeleteByID(ctx context.Context, repositoryID int64) error
 	ListTracked(ctx context.Context) ([]domain.Repository, error)
 }
 
@@ -78,6 +79,19 @@ func (r *PostgresRepositoryRepository) UpdateLastSeenTag(ctx context.Context, re
 	tag, err := r.pool.Exec(ctx, updateLastSeenTagByIDQuery, repositoryID, lastTag)
 	if err != nil {
 		return fmt.Errorf("update last_seen_tag %s in repo with id %d: %w", lastTag, repositoryID, err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return store.ErrNotFound
+	}
+
+	return nil
+}
+
+func (r *PostgresRepositoryRepository) DeleteByID(ctx context.Context, repositoryID int64) error {
+	tag, err := r.pool.Exec(ctx, deleteByIDQuery, repositoryID)
+	if err != nil {
+		return fmt.Errorf("delete repository with id %d: %w", repositoryID, err)
 	}
 
 	if tag.RowsAffected() == 0 {

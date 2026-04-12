@@ -11,6 +11,13 @@ type Config struct {
 	DatabaseURL string
 	Port        string
 	GithubToken string
+
+	SMTPHost   string
+	SMTPPort   string
+	SMTPUser   string
+	SMTPPass   string
+	FromEmail  string
+	AppBaseURL string
 }
 
 func Load() (*Config, error) {
@@ -20,6 +27,12 @@ func Load() (*Config, error) {
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 		Port:        os.Getenv("PORT"),
 		GithubToken: os.Getenv("GITHUB_TOKEN"),
+		SMTPHost:    os.Getenv("SMTP_HOST"),
+		SMTPPort:    os.Getenv("SMTP_PORT"),
+		SMTPUser:    os.Getenv("SMTP_USER"),
+		SMTPPass:    os.Getenv("SMTP_PASSWORD"),
+		FromEmail:   os.Getenv("SENDER_EMAIL"),
+		AppBaseURL:  os.Getenv("MAIN_URL"),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -28,6 +41,20 @@ func Load() (*Config, error) {
 
 	if cfg.Port == "" {
 		cfg.Port = "8080"
+	}
+
+	if cfg.AppBaseURL == "" {
+		cfg.AppBaseURL = "http://localhost:" + cfg.Port
+	}
+
+	if cfg.SMTPHost == "" {
+		return nil, fmt.Errorf("SMTP_HOST is required")
+	}
+	if cfg.SMTPPort == "" {
+		cfg.SMTPPort = "1025"
+	}
+	if cfg.FromEmail == "" {
+		cfg.FromEmail = "noreply@localhost"
 	}
 
 	return cfg, nil

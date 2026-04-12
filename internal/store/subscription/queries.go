@@ -39,6 +39,14 @@ const deleteSubscriptionByUnsubscribeTokenQuery = `
 	WHERE unsubscribe_token = $1
 `
 
+const hasAnySubscriptionsByRepositoryIDQuery = `
+	SELECT EXISTS(
+		SELECT 1
+		FROM subscriptions
+		WHERE repository_id = $1
+	)
+`
+
 const listConfirmedSubscriptionsByEmailQuery = `
 	SELECT id, email, repository_id, confirmed, confirmation_token, unsubscribe_token, created_at, confirmed_at
 	FROM subscriptions

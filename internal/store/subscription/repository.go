@@ -20,6 +20,7 @@ type Repository interface {
 	FindByUnsubscribeToken(ctx context.Context, token string) (*domain.Subscription, error)
 	Confirm(ctx context.Context, token string) error
 	DeleteByUnsubscribeToken(ctx context.Context, token string) error
+	HasAnyByRepositoryID(ctx context.Context, repositoryID int64) (bool, error)
 	ListConfirmedByEmail(ctx context.Context, email string) ([]domain.Subscription, error)
 	ListSubscriptionDetailsByEmail(ctx context.Context, email string) ([]Details, error)
 }
@@ -168,6 +169,17 @@ func (r *PostgresSubscriptionRepository) DeleteByUnsubscribeToken(ctx context.Co
 	}
 
 	return nil
+}
+
+func (r *PostgresSubscriptionRepository) HasAnyByRepositoryID(ctx context.Context, repositoryID int64) (bool, error) {
+	var hasAny bool
+
+	err := r.pool.QueryRow(ctx, hasAnySubscriptionsByRepositoryIDQuery, repositoryID).Scan(&hasAny)
+	if err != nil {
+		return false, fmt.Errorf("check subscriptions for repository_id %d: %w", repositoryID, err)
+	}
+
+	return hasAny, nil
 }
 
 func (r *PostgresSubscriptionRepository) ListConfirmedByEmail(ctx context.Context, email string) ([]domain.Subscription, error) {

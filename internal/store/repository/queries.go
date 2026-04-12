@@ -18,6 +18,11 @@ const updateLastSeenTagByIDQuery = `
 	WHERE id = $1
 `
 
+const deleteByIDQuery = `
+	DELETE FROM repositories
+	WHERE id = $1
+`
+
 const listTrackedReposQuery = `
 	SELECT id, name, last_seen_tag, created_at, updated_at
 	FROM repositories
