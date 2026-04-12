@@ -68,7 +68,7 @@ func main() {
 	)
 
 	handler := httpHandler.New(subscriptionService)
-	router := httpRouter.New(handler)
+	router := httpRouter.New(handler, cfg.ApiKey)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,

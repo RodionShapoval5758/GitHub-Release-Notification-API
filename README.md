@@ -1,8 +1,46 @@
-# 
-GitHub-Release-Notification-API
+# GitHub-Release-Notification-API
 API that allows users to subscribe to email notifications about new releases of a chosen GitHub repository.
 
+### How it works and what it does(to a user):
+- subscribe your email to owner/repo if you have an API key
+- confirm subscription in the email with the button
+- periodically checks GitHub releases and sends notifications
+- go to that exact release with the button in the email
+- unsubscribe with the button in the notification email
+- list all the subscriptions for an email
 
+### Stack
+- Golang
+- Chi & net/http
+- PostgreSQL
+- golang-migrate
+- GitHub REST API
+- net/smtp / Mailpit for local SMTP server
+- Docker / Docker Compose
+- Gemini CLI extensions for Code Review and Idiomatic Go check style
+- Codex CLI for explanation, some research and trivial/routine code
+
+### Endpoints
+- POST /api/subscribe
+- GET /api/confirm/{token}
+- GET /api/unsubscribe/{token}
+- GET /api/subscriptions?email=...
+
+### Configuration
+
+Major env vars:
+- GITHUB_TOKEN - without it the API can make only up to 60 req/hour
+- API_KEY - the endpoints are not secured without it
+
+### Run Locally
+- `docker compose up --build` for the first time, then without the --build option
+- `go run test ./...` to run unit tests(you have to be in the root of the project)
+
+### Notes
+- migrations run on startup
+- Mailpit UI available locally on port 8025
+- Swagger contract is in swagger.yaml
+- API auth key is *genesis-summer-school*. Header is "Authorization"
 ### **Workflow + thoughts:**
 
 DB schema:

@@ -13,6 +13,7 @@ services:
       PORT: "8080"
       DATABASE_URL: postgres://postgres:password@postgres_db:5432/github_release_notifications?sslmode=disable
       GITHUB_TOKEN: ${GITHUB_TOKEN}
+      API_KEY: ${API_KEY}
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
       SMTP_USER: ""
@@ -48,6 +49,6 @@ services:
       MP_MAX_MESSAGES: 5000
       MP_SMTP_AUTH_ACCEPT_ANY: 1
       MP_SMTP_AUTH_ALLOW_INSECURE: 1
-      
+
 volumes:
   postgres_data:
