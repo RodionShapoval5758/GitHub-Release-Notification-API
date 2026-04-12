@@ -44,6 +44,9 @@ func NewGithubClient(cl *http.Client, token *string) *Service {
 }
 
 func (s *Service) CheckRepo(ctx context.Context, fullName string) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	resp, err := s.doGet(ctx, "/repos/"+strings.TrimSpace(fullName))
 	if err != nil {
 		return err
@@ -58,6 +61,9 @@ func (s *Service) CheckRepo(ctx context.Context, fullName string) error {
 }
 
 func (s *Service) GetLatestTag(ctx context.Context, fullName string) (*Release, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	resp, err := s.doGet(ctx, "/repos/"+strings.TrimSpace(fullName)+"/releases/latest")
 	if err != nil {
 		return nil, err
@@ -82,11 +88,8 @@ func (s *Service) GetLatestTag(ctx context.Context, fullName string) (*Release, 
 }
 
 func (s *Service) doGet(ctx context.Context, path string) (*http.Response, error) {
-	extendedCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
 	httpRequest, err := http.NewRequestWithContext(
-		extendedCtx,
+		ctx,
 		http.MethodGet,
 		s.baseURL+path,
 		nil,

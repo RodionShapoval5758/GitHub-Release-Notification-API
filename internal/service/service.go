@@ -23,21 +23,28 @@ type githubClient interface {
 	CheckRepo(ctx context.Context, fullName string) error
 }
 
+type smtpClient interface {
+	SendConfirmationEmail(toEmail, repoName, confirmToken string) error
+}
+
 type subscriptionService struct {
 	subscriptionRepository subscription.Repository
 	repositoryRepository   repository.Repository
 	githubClient           githubClient
+	smtpClient             smtpClient
 }
 
 func NewSubscriptionService(
 	subscriptionRepository subscription.Repository,
 	repositoryRepository repository.Repository,
 	githubClient githubClient,
+	smtpClient smtpClient,
 ) SubscriptionService {
 	return &subscriptionService{
 		subscriptionRepository: subscriptionRepository,
 		repositoryRepository:   repositoryRepository,
 		githubClient:           githubClient,
+		smtpClient:             smtpClient,
 	}
 }
 
@@ -88,7 +95,8 @@ func (s *subscriptionService) Subscribe(ctx context.Context, email string, repo 
 		}
 	}
 
-	if err := s.createSubscriptionWithGeneratedTokens(ctx, email, repoDomain.ID); err != nil {
+	token, err := s.createSubscriptionWithGeneratedTokens(ctx, email, repoDomain.ID)
+	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrAlreadyExists):
 			return ErrSubscriptionAlreadyExists
@@ -99,7 +107,11 @@ func (s *subscriptionService) Subscribe(ctx context.Context, email string, repo 
 		}
 	}
 
-	// TODO sent email confirmation
+	if err := s.smtpClient.SendConfirmationEmail(email, repo, token); err != nil {
+		return fmt.Errorf("send email to %s for repo %s and with token %s: %w",
+			email, repo, token, err)
+	}
+
 	return nil
 }
 
@@ -169,11 +181,11 @@ func (s *subscriptionService) ListByEmail(ctx context.Context, email string) ([]
 	return subscriptions, nil
 }
 
-func (s *subscriptionService) createSubscriptionWithGeneratedTokens(ctx context.Context, email string, repositoryID int64) error {
+func (s *subscriptionService) createSubscriptionWithGeneratedTokens(ctx context.Context, email string, repositoryID int64) (string, error) {
 	for range maxTokenGenerationAttempts {
 		confirmToken, unsubscribeToken, err := GenerateTokens()
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		subscriptionInput := domain.Subscription{
@@ -188,10 +200,10 @@ func (s *subscriptionService) createSubscriptionWithGeneratedTokens(ctx context.
 			continue
 		}
 
-		return err
+		return confirmToken, err
 	}
 
-	return store.ErrTokensAlreadyExists
+	return "", store.ErrTokensAlreadyExists
 }
 
 func GenerateTokens() (string, string, error) {

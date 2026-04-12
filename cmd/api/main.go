@@ -6,6 +6,8 @@ import (
 	"GithubReleaseNotificationAPI/internal/github"
 	httpHandler "GithubReleaseNotificationAPI/internal/http/handler"
 	httpRouter "GithubReleaseNotificationAPI/internal/http/router"
+	"GithubReleaseNotificationAPI/internal/mail"
+	"GithubReleaseNotificationAPI/internal/notifier"
 	"GithubReleaseNotificationAPI/internal/service"
 	"GithubReleaseNotificationAPI/internal/store/repository"
 	"GithubReleaseNotificationAPI/internal/store/subscription"
@@ -49,10 +51,20 @@ func main() {
 
 	githubClient := github.NewGithubClient(http.DefaultClient, &cfg.GithubToken)
 
+	smtpClient := mail.NewSMTPService(
+		cfg.SMTPHost,
+		cfg.SMTPPort,
+		cfg.SMTPUser,
+		cfg.SMTPPass,
+		cfg.FromEmail,
+		cfg.AppBaseURL,
+	)
+
 	subscriptionService := service.NewSubscriptionService(
 		subscriptionRepository,
 		repositoryRepository,
 		githubClient,
+		smtpClient,
 	)
 
 	handler := httpHandler.New(subscriptionService)
@@ -74,6 +86,20 @@ func main() {
 
 	shutdownSignalCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	worker := notifier.NewWorker(
+		smtpClient,
+		githubClient,
+		subscriptionRepository,
+		repositoryRepository,
+	)
+
+	go func() {
+		err := worker.Start(shutdownSignalCtx, time.Second*25)
+		if err != nil {
+			slog.Error("worker failed", "error", err)
+		}
+	}()
 
 	<-shutdownSignalCtx.Done()
 	slog.Info("shutdown signal received")

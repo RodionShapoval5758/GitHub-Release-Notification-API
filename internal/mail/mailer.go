@@ -6,11 +6,6 @@ import (
 	"net/smtp"
 )
 
-type Service interface {
-	SendConfirmationEmail(toEmail, repoName, confirmToken string) error
-	SendReleaseNotification(toEmail string, repoName string, release *github.Release) error
-}
-
 type smtpService struct {
 	host       string
 	port       string
@@ -45,15 +40,19 @@ func (s *smtpService) SendConfirmationEmail(toEmail, repoName, confirmToken stri
 	return s.send(toEmail, subject, body)
 }
 
-func (s *smtpService) SendReleaseNotification(toEmail string, repoName string, release *github.Release) error {
-	subject := fmt.Sprintf("New Release for %s: %s", repoName, release.Tag)
+func (s *smtpService) SendReleaseNotification(toEmail string, token string, release *github.Release) error {
+	subject := fmt.Sprintf("New Release for %s: %s", release.Name, release.Tag)
+	unsubscribeLink := fmt.Sprintf("%s/api/unsubscribe/%s", s.appBaseURL, token)
 
 	body := fmt.Sprintf(`
 		<h3>New release available for <b>%s</b></h3>
 		<p><b>Tag:</b> %s</p>
 		<p><b>Name:</b> %s</p>
 		<p><a href="%s" style="background-color: #0366d6; color: white; padding: 8px 16px; text-decoration: none; border-radius: 5px; display: inline-block;">View Release on GitHub</a></p>
-	`, repoName, release.Tag, release.Name, release.URL)
+		<p style="margin-top: 16px;">
+			<a href="%s" style="color: #6a737d; text-decoration: underline;">Unsubscribe from these notifications</a>
+		</p>
+	`, release.Name, release.Tag, release.Name, release.URL, unsubscribeLink)
 
 	return s.send(toEmail, subject, body)
 }

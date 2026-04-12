@@ -10,18 +10,6 @@ const createSubscriptionQuery = `
 	VALUES ($1, $2, $3, $4)
 `
 
-const findSubscriptionByEmailAndRepositoryIDQuery = `
-	SELECT id, email, repository_id, confirmed, confirmation_token, unsubscribe_token, created_at, confirmed_at
-	FROM subscriptions
-	WHERE email = $1 AND repository_id = $2
-`
-
-const findSubscriptionByConfirmTokenQuery = `
-	SELECT id, email, repository_id, confirmed, confirmation_token, unsubscribe_token, created_at, confirmed_at
-	FROM subscriptions
-	WHERE confirmation_token = $1
-`
-
 const findSubscriptionByUnsubscribeTokenQuery = `
 	SELECT id, email, repository_id, confirmed, confirmation_token, unsubscribe_token, created_at, confirmed_at
 	FROM subscriptions
@@ -43,15 +31,24 @@ const hasAnySubscriptionsByRepositoryIDQuery = `
 	SELECT EXISTS(
 		SELECT 1
 		FROM subscriptions
-		WHERE repository_id = $1
+	WHERE repository_id = $1
 	)
 `
 
-const listConfirmedSubscriptionsByEmailQuery = `
-	SELECT id, email, repository_id, confirmed, confirmation_token, unsubscribe_token, created_at, confirmed_at
+const listConfirmedSubscriptionsByRepositoryIDQuery = `
+	SELECT
+		id,
+		email,
+		repository_id,
+		confirmed,
+		confirmation_token,
+		unsubscribe_token,
+		created_at,
+		confirmed_at
 	FROM subscriptions
-	WHERE email = $1 AND confirmed = TRUE
+	WHERE repository_id = $1 AND confirmed = TRUE
 `
+
 const listSubscriptionDetailsByEmailQuery = `
 	SELECT subscriptions.email, repositories.name, subscriptions.confirmed, repositories.last_seen_tag
 	FROM subscriptions

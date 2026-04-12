@@ -15,13 +15,11 @@ import (
 
 type Repository interface {
 	Create(ctx context.Context, subscription domain.Subscription) error
-	FindByEmailAndRepositoryID(ctx context.Context, email string, repositoryID int64) (*domain.Subscription, error)
-	FindByConfirmToken(ctx context.Context, token string) (*domain.Subscription, error)
 	FindByUnsubscribeToken(ctx context.Context, token string) (*domain.Subscription, error)
 	Confirm(ctx context.Context, token string) error
 	DeleteByUnsubscribeToken(ctx context.Context, token string) error
 	HasAnyByRepositoryID(ctx context.Context, repositoryID int64) (bool, error)
-	ListConfirmedByEmail(ctx context.Context, email string) ([]domain.Subscription, error)
+	ListConfirmedByRepositoryID(ctx context.Context, repositoryID int64) ([]domain.Subscription, error)
 	ListSubscriptionDetailsByEmail(ctx context.Context, email string) ([]Details, error)
 }
 
@@ -72,50 +70,6 @@ func (r *PostgresSubscriptionRepository) Create(ctx context.Context, subscriptio
 	}
 
 	return nil
-}
-
-func (r *PostgresSubscriptionRepository) FindByEmailAndRepositoryID(ctx context.Context, email string, repositoryID int64) (*domain.Subscription, error) {
-	subscription, err := scanSubscription(
-		r.pool.QueryRow(
-			ctx,
-			findSubscriptionByEmailAndRepositoryIDQuery,
-			email,
-			repositoryID,
-		),
-	)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, store.ErrNotFound
-		}
-
-		return nil, fmt.Errorf(
-			"find subscription by email %s and repository_id %d: %w",
-			email,
-			repositoryID,
-			err,
-		)
-	}
-
-	return subscription, nil
-}
-
-func (r *PostgresSubscriptionRepository) FindByConfirmToken(ctx context.Context, token string) (*domain.Subscription, error) {
-	subscription, err := scanSubscription(
-		r.pool.QueryRow(
-			ctx,
-			findSubscriptionByConfirmTokenQuery,
-			token,
-		),
-	)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, store.ErrNotFound
-		}
-
-		return nil, fmt.Errorf("find subscription by confirm token: %w", err)
-	}
-
-	return subscription, nil
 }
 
 func (r *PostgresSubscriptionRepository) FindByUnsubscribeToken(ctx context.Context, token string) (*domain.Subscription, error) {
@@ -182,27 +136,31 @@ func (r *PostgresSubscriptionRepository) HasAnyByRepositoryID(ctx context.Contex
 	return hasAny, nil
 }
 
-func (r *PostgresSubscriptionRepository) ListConfirmedByEmail(ctx context.Context, email string) ([]domain.Subscription, error) {
-	rows, err := r.pool.Query(ctx, listConfirmedSubscriptionsByEmailQuery, email)
+func (r *PostgresSubscriptionRepository) ListConfirmedByRepositoryID(
+	ctx context.Context,
+	repositoryID int64,
+) ([]domain.Subscription, error) {
+	rows, err := r.pool.Query(ctx, listConfirmedSubscriptionsByRepositoryIDQuery, repositoryID)
 	if err != nil {
-		return nil, fmt.Errorf("query confirmed subscriptions by email %s: %w", email, err)
+		return nil, fmt.Errorf("query confirmed subscriptions by repository_id %d: %w", repositoryID, err)
 	}
 	defer rows.Close()
 
-	var subscriptions []domain.Subscription
+	var subs []domain.Subscription
 	for rows.Next() {
-		sub, err := scanSubscription(rows)
+		subscription, err := scanSubscription(rows)
 		if err != nil {
 			return nil, fmt.Errorf("scan subscription row: %w", err)
 		}
-		subscriptions = append(subscriptions, *sub)
+
+		subs = append(subs, *subscription)
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate subscription rows: %w", err)
 	}
 
-	return subscriptions, nil
+	return subs, nil
 }
 
 func (r *PostgresSubscriptionRepository) ListSubscriptionDetailsByEmail(ctx context.Context, email string) ([]Details, error) {

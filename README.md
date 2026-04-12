@@ -3,7 +3,7 @@ GitHub-Release-Notification-API
 API that allows users to subscribe to email notifications about new releases of a chosen GitHub repository.
 
 
-Workflow + thoughts:
+### **Workflow + thoughts:**
 
 DB schema:
     Two main entities:
@@ -22,10 +22,19 @@ Errors && logging:
 
 Instead of creating GerOrCreate method for repository that is race-safe
 I separated methods Create and Find and implemented manual race condition handling
-so that everything is explicit and content
+so that everything is explicit
 
 In case of duplicate tokens the program tries to regenerate it 5 times. 
 There is a ridiculously small possibility of getting 
 duplicate tokens with 32 token length, so I neglect it
 
-Swagger docs states that /api/subscribe consumes both json and form data, so I made a fallback for both
+Swagger docs states that /api/subscribe consumes both JSON and form data, so I made a fallback for both
+
+Concurrent worker is supposed to work like that:
+    Every tick(4 minutes) get all the repositories. Create a waitGroup
+    and a semaphore channel with 10 slots. Add 1 goroutine to the wait group and 1 slot to the semaphore.
+    Run that go routine that processes one repository: if repository has no releases - skip,
+    if the github rate limit is hit, skip that scan. After finishing of one processing release goroutine
+    from the semaphore and waitgroup. Waitgroup makes sure that all the repositories in the current scan
+    are scanned, before repeating the cycle. 
+    Semaphore makes sure that at most 10 repositories are scanned in parallel
