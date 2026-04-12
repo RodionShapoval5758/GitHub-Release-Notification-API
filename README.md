@@ -15,6 +15,7 @@ API that allows users to subscribe to email notifications about new releases of 
 - PostgreSQL
 - golang-migrate
 - GitHub REST API
+- GitHub Actions for CI
 - net/smtp / Mailpit for local SMTP server
 - Docker / Docker Compose
 - Gemini CLI extensions for Code Review and Idiomatic Go check style
@@ -35,6 +36,12 @@ Major env vars:
 ### Run Locally
 - `docker compose up --build` for the first time, then without the --build option
 - `go run test ./...` to run unit tests(you have to be in the root of the project)
+
+### CI
+- CI is in `.github/workflows/ci.yml`
+- Implemented with GitHub Actions
+- Runs on every push/pull-request
+- Runs vet, build, test and golangci-lint
 
 ### Notes
 - migrations run on startup
